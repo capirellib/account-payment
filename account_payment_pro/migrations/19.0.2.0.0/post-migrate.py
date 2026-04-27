@@ -23,23 +23,40 @@ Re-ejecutable: todas las transformaciones leen de x_bkp_* (inmutables) y
 filtran por x_bkp_migrated = TRUE (sentinel del pre-migrate). Esto garantiza
 que pagos creados después de la migración nunca son tocados, aunque el post
 se vuelva a correr.
+
+NOTE: openupgradelib is NOT required. All operations use native PostgreSQL SQL.
 """
 
 import logging
 
-from openupgradelib import openupgrade
-
 _logger = logging.getLogger(__name__)
+
+
+def _column_exists(cr, table, column):
+    """
+    EN: Returns True if the given column exists in the given table.
+    ES: Retorna True si la columna existe en la tabla indicada.
+    """
+    cr.execute(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = %s
+          AND column_name = %s
+        """,
+        (table, column),
+    )
+    return cr.fetchone() is not None
 
 
 def migrate(cr, version):
     if not version:
         return
 
-    has_bkp_counterpart = openupgrade.column_exists(cr, "account_payment", "x_bkp_counterpart_exchange_rate")
-    has_bkp_force = openupgrade.column_exists(cr, "account_payment", "x_bkp_force_amount_company_currency")
-    has_bkp_write_off = openupgrade.column_exists(cr, "account_payment", "x_bkp_write_off_amount")
-    has_bkp_unreconciled = openupgrade.column_exists(cr, "account_payment", "x_bkp_unreconciled_amount")
+    has_bkp_counterpart = _column_exists(cr, "account_payment", "x_bkp_counterpart_exchange_rate")
+    has_bkp_force = _column_exists(cr, "account_payment", "x_bkp_force_amount_company_currency")
+    has_bkp_write_off = _column_exists(cr, "account_payment", "x_bkp_write_off_amount")
+    has_bkp_unreconciled = _column_exists(cr, "account_payment", "x_bkp_unreconciled_amount")
 
     # ══════════════════════════════════════════════════════════════════════════
     # PASO 1: accounting_rate
