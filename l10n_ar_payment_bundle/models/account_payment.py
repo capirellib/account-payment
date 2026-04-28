@@ -16,6 +16,10 @@ class AccountPayment(models.Model):
         currency_field="destination_currency_id",
         compute="_compute_link_payments_total",
     )
+    bundle_counterpart_currency_amount = fields.Monetary(
+        currency_field="destination_currency_id",
+        compute="_compute_link_payments_total",
+    )
     partner_id = fields.Many2one(recursive=True)
 
     show_move_button = fields.Boolean(compute="_compute_show_move_button")
@@ -87,8 +91,11 @@ class AccountPayment(models.Model):
         """
         main_payment_ids = self.filtered("is_main_payment")
         (self - main_payment_ids).link_payments_total = False
+        (self - main_payment_ids).bundle_counterpart_currency_amount = False
         for rec in main_payment_ids:
-            rec.link_payments_total = sum(rec.link_payment_ids.mapped("payment_total"))
+            total = sum(rec.link_payment_ids.mapped("payment_total"))
+            rec.link_payments_total = total
+            rec.bundle_counterpart_currency_amount = total
 
     @api.depends("use_payment_pro", "main_payment_id", "is_internal_transfer")
     def _compute_available_journal_ids(self):
